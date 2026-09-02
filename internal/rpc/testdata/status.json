@@ -1,0 +1,42 @@
+{
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+    "node_info": {
+      "protocol_version": {
+        "p2p": "8",
+        "block": "11",
+        "app": "0"
+      },
+      "id": "1111111111111111111111111111111111111111",
+      "listen_addr": "192.0.2.1:26656",
+      "network": "cosmoshub-4",
+      "version": "0.38.22",
+      "channels": "40202122233038606100",
+      "moniker": "synth-seed",
+      "other": {
+        "tx_index": "on",
+        "rpc_address": "tcp://0.0.0.0:26657"
+      }
+    },
+    "sync_info": {
+      "latest_block_hash": "0000000000000000000000000000000000000000000000000000000000000001",
+      "latest_app_hash": "0000000000000000000000000000000000000000000000000000000000000002",
+      "latest_block_height": "30000000",
+      "latest_block_time": "2026-09-01T12:00:00.000000000Z",
+      "earliest_block_hash": "0000000000000000000000000000000000000000000000000000000000000003",
+      "earliest_app_hash": "0000000000000000000000000000000000000000000000000000000000000004",
+      "earliest_block_height": "1",
+      "earliest_block_time": "2019-12-11T16:11:34.000000000Z",
+      "catching_up": false
+    },
+    "validator_info": {
+      "address": "2222222222222222222222222222222222222222",
+      "pub_key": {
+        "type": "tendermint/PubKeyEd25519",
+        "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      },
+      "voting_power": "1000"
+    }
+  }
+}

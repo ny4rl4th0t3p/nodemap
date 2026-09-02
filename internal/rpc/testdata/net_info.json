@@ -1,0 +1,265 @@
+{
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+    "listening": true,
+    "listeners": [
+      "Listener(@192.0.2.1:26656)"
+    ],
+    "n_peers": "10",
+    "peers": [
+      {
+        "node_info": {
+          "protocol_version": {
+            "p2p": "8",
+            "block": "11",
+            "app": "0"
+          },
+          "id": "a000000000000000000000000000000000000000",
+          "listen_addr": "192.0.2.10:26656",
+          "network": "cosmoshub-4",
+          "version": "0.38.22",
+          "channels": "40202122233038606100",
+          "moniker": "synth-relayer",
+          "other": {
+            "tx_index": "on",
+            "rpc_address": "tcp://0.0.0.0:26657"
+          }
+        },
+        "is_outbound": true,
+        "connection_status": {
+          "Duration": "1000000000",
+          "SendMonitor": {
+            "Start": "2026-09-01T00:00:00Z",
+            "Bytes": "1",
+            "Samples": "1",
+            "InstRate": "0",
+            "CurRate": "0",
+            "AvgRate": "0",
+            "PeakRate": "0",
+            "BytesRem": "0",
+            "Duration": "0",
+            "Idle": "0",
+            "TimeRem": "0",
+            "Progress": 0,
+            "Active": true
+          },
+          "RecvMonitor": {
+            "Start": "2026-09-01T00:00:00Z",
+            "Bytes": "1",
+            "Samples": "1",
+            "InstRate": "0",
+            "CurRate": "0",
+            "AvgRate": "0",
+            "PeakRate": "0",
+            "BytesRem": "0",
+            "Duration": "0",
+            "Idle": "0",
+            "TimeRem": "0",
+            "Progress": 0,
+            "Active": true
+          },
+          "Channels": [
+            {
+              "ID": 48,
+              "SendQueueCapacity": "1",
+              "SendQueueSize": "0",
+              "Priority": "5",
+              "RecentlySent": "0"
+            }
+          ]
+        },
+        "remote_ip": "192.0.2.10"
+      },
+      {
+        "node_info": {
+          "protocol_version": {
+            "p2p": "8",
+            "block": "11",
+            "app": "0"
+          },
+          "id": "a000000000000000000000000000000000000001",
+          "listen_addr": "tcp://0.0.0.0:26656",
+          "network": "cosmoshub-4",
+          "version": "0.38.22",
+          "channels": "40202122233038606100",
+          "moniker": "synth-full-1",
+          "other": {
+            "tx_index": "off",
+            "rpc_address": "tcp://0.0.0.0:14957"
+          }
+        },
+        "is_outbound": false,
+        "remote_ip": "192.0.2.11"
+      },
+      {
+        "node_info": {
+          "protocol_version": {
+            "p2p": "8",
+            "block": "11",
+            "app": "0"
+          },
+          "id": "a000000000000000000000000000000000000002",
+          "listen_addr": "tcp://0.0.0.0:26656",
+          "network": "cosmoshub-4",
+          "version": "0.37.6",
+          "channels": "40202122233038606100",
+          "moniker": "synth-loopback-rpc",
+          "other": {
+            "tx_index": "on",
+            "rpc_address": "tcp://127.0.0.1:26657"
+          }
+        },
+        "is_outbound": true,
+        "remote_ip": "198.51.100.5"
+      },
+      {
+        "node_info": {
+          "protocol_version": {
+            "p2p": "8",
+            "block": "11",
+            "app": "0"
+          },
+          "id": "a000000000000000000000000000000000000003",
+          "listen_addr": "tcp://0.0.0.0:26656",
+          "network": "cosmoshub-4",
+          "version": "0.38.22",
+          "channels": "40202122233038606100",
+          "moniker": "synth-private-rpc",
+          "other": {
+            "tx_index": "on",
+            "rpc_address": "tcp://10.0.0.5:26657"
+          }
+        },
+        "is_outbound": false,
+        "remote_ip": "198.51.100.6"
+      },
+      {
+        "node_info": {
+          "protocol_version": {
+            "p2p": "8",
+            "block": "11",
+            "app": "0"
+          },
+          "id": "a000000000000000000000000000000000000004",
+          "listen_addr": "tcp://0.0.0.0:26656",
+          "network": "osmosis-1",
+          "version": "0.38.22",
+          "channels": "40202122233038606100",
+          "moniker": "synth-other-chain",
+          "other": {
+            "tx_index": "on",
+            "rpc_address": "tcp://0.0.0.0:26657"
+          }
+        },
+        "is_outbound": true,
+        "remote_ip": "203.0.113.7"
+      },
+      {
+        "node_info": {
+          "protocol_version": {
+            "p2p": "8",
+            "block": "11",
+            "app": "0"
+          },
+          "id": "a000000000000000000000000000000000000005",
+          "listen_addr": "tcp://0.0.0.0:26656",
+          "network": "cosmoshub-4",
+          "version": "0.38.17",
+          "channels": "40202122233038606100",
+          "moniker": "synth-no-rpc",
+          "other": {
+            "tx_index": "off",
+            "rpc_address": ""
+          }
+        },
+        "is_outbound": true,
+        "remote_ip": "203.0.113.8"
+      },
+      {
+        "node_info": {
+          "protocol_version": {
+            "p2p": "8",
+            "block": "11",
+            "app": "0"
+          },
+          "id": "a000000000000000000000000000000000000006",
+          "listen_addr": "203.0.113.9:20390",
+          "network": "cosmoshub-4",
+          "version": "0.38.22",
+          "channels": "40202122233038606100",
+          "moniker": "synth-custom-ports",
+          "other": {
+            "tx_index": "on",
+            "rpc_address": "tcp://0.0.0.0:2001"
+          }
+        },
+        "is_outbound": false,
+        "remote_ip": "203.0.113.9"
+      },
+      {
+        "node_info": {
+          "protocol_version": {
+            "p2p": "8",
+            "block": "11",
+            "app": "0"
+          },
+          "id": "a000000000000000000000000000000000000007",
+          "listen_addr": "tcp://0.0.0.0:26656",
+          "network": "cosmoshub-4",
+          "version": "0.38.22",
+          "channels": "40202122233038606100",
+          "moniker": "synth-full-2",
+          "other": {
+            "tx_index": "on",
+            "rpc_address": "tcp://0.0.0.0:26657"
+          }
+        },
+        "is_outbound": true,
+        "remote_ip": "192.0.2.12"
+      },
+      {
+        "node_info": {
+          "protocol_version": {
+            "p2p": "8",
+            "block": "11",
+            "app": "0"
+          },
+          "id": "a000000000000000000000000000000000000008",
+          "listen_addr": "tcp://0.0.0.0:26656",
+          "network": "cosmoshub-4",
+          "version": "0.37.6",
+          "channels": "40202122233038606100",
+          "moniker": "synth-bound-own-ip",
+          "other": {
+            "tx_index": "on",
+            "rpc_address": "tcp://192.0.2.13:26657"
+          }
+        },
+        "is_outbound": false,
+        "remote_ip": "192.0.2.13"
+      },
+      {
+        "node_info": {
+          "protocol_version": {
+            "p2p": "8",
+            "block": "11",
+            "app": "0"
+          },
+          "id": "a000000000000000000000000000000000000009",
+          "listen_addr": "tcp://0.0.0.0:26656",
+          "network": "cosmoshub-4",
+          "version": "0.38.22",
+          "channels": "40202122233038606100",
+          "moniker": "synth-ipv6",
+          "other": {
+            "tx_index": "on",
+            "rpc_address": "tcp://0.0.0.0:26657"
+          }
+        },
+        "is_outbound": true,
+        "remote_ip": "2001:db8::1"
+      }
+    ]
+  }
+}
