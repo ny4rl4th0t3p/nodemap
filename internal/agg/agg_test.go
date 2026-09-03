@@ -44,6 +44,8 @@ func sample() *crawl.Result {
 func TestBuildAppliesThresholds(t *testing.T) {
 	cur, line := Build(sample(), "test-1", at, DefaultParams)
 
+	assert.Equal(t, model.SchemaVersion, cur.SchemaVersion)
+	assert.Equal(t, model.SchemaVersion, line.SchemaVersion)
 	assert.Equal(t, "test-1", cur.Chain)
 	assert.True(t, cur.CrawledAt.Equal(at))
 	assert.Equal(t, 12, cur.PublicNodes)
@@ -219,8 +221,10 @@ func TestEmptyResultProducesEmptyNotNull(t *testing.T) {
 	}
 	rawLine, err := json.Marshal(line)
 	require.NoError(t, err)
-	assert.NotContains(t, string(rawLine), "version")
-	assert.NotContains(t, string(rawLine), "fraction")
+	assert.NotContains(t, string(rawLine), `"version_shares"`)
+	assert.NotContains(t, string(rawLine), `"largest_component_fraction"`)
+	assert.NotContains(t, string(rawLine), `"top_n_share"`)
+	assert.Contains(t, string(rawLine), `"schema_version":1`)
 }
 
 func TestBuildDoesNotAliasInputs(t *testing.T) {

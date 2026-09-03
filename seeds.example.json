@@ -1,0 +1,10 @@
+{
+  "chain_id": "cosmoshub-4",
+  "apis": {
+    "rpc": [
+      { "address": "https://rpc.example-operator-one.example", "provider": "operator one" },
+      { "address": "https://rpc.example-operator-two.example:443", "provider": "operator two" },
+      { "address": "http://192.0.2.10:26657", "provider": "operator three" }
+    ]
+  }
+}

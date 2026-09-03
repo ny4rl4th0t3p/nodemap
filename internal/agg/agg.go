@@ -48,6 +48,7 @@ const oldestMinor = 34
 func Build(r *crawl.Result, chain string, at time.Time, p Params) (model.Current, model.HistoryLine) {
 	cur := model.Current{
 		Aggregates: model.Aggregates{
+			SchemaVersion:  model.SchemaVersion,
 			Chain:          chain,
 			CrawledAt:      at,
 			PublicNodes:    r.PublicNodes,
@@ -60,6 +61,7 @@ func Build(r *crawl.Result, chain string, at time.Time, p Params) (model.Current
 		Directory: directory(r),
 	}
 	line := model.HistoryLine{
+		SchemaVersion:  model.SchemaVersion,
 		At:             at,
 		Chain:          chain,
 		PublicNodes:    r.PublicNodes,

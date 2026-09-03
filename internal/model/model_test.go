@@ -49,7 +49,7 @@ var persisted = []any{Current{}, HistoryLine{}, DirectoryState{}}
 // a new key here is a new published field and needs the same justification.
 var allowedJSONKeys = map[string][]string{
 	"Current": {
-		"chain", "crawled_at", "public_nodes", "non_public_nodes",
+		"schema_version", "chain", "crawled_at", "public_nodes", "non_public_nodes",
 		"countries",
 		"asns", "asn", "org", "nodes", "share",
 		"versions", "population", "shares",
@@ -58,10 +58,10 @@ var allowedJSONKeys = map[string][]string{
 		"earliest_block_height", "tx_index", "catching_up",
 	},
 	"HistoryLine": {
-		"at", "chain", "public_nodes", "non_public_nodes",
+		"schema_version", "at", "chain", "public_nodes", "non_public_nodes",
 		"version_shares", "largest_component_fraction", "top_n_share",
 	},
-	"DirectoryState": {"endpoints"},
+	"DirectoryState": {"schema_version", "endpoints"},
 }
 
 func TestNoForbiddenFieldsAnywhere(t *testing.T) {
@@ -137,11 +137,22 @@ func TestHistoryLineHasNoPerNodeContent(t *testing.T) {
 
 func TestDirectoryStateHoldsEndpointsAndTimesOnly(t *testing.T) {
 	rt := reflect.TypeOf(DirectoryState{})
-	require.Equal(t, 1, rt.NumField())
-	f := rt.Field(0)
+	require.Equal(t, 2, rt.NumField())
+	assert.Equal(t, reflect.Int, rt.Field(0).Type.Kind(), "schema version")
+	f := rt.Field(1)
 	require.Equal(t, reflect.Map, f.Type.Kind())
 	assert.Equal(t, reflect.String, f.Type.Key().Kind())
 	assert.Equal(t, reflect.TypeOf(HistoryLine{}.At), f.Type.Elem())
+}
+
+func TestEveryPersistedTypeCarriesTheSchemaVersion(t *testing.T) {
+	for _, v := range persisted {
+		rt := reflect.TypeOf(v)
+		f, ok := rt.FieldByName("SchemaVersion")
+		require.True(t, ok, "%s has no SchemaVersion", rt.Name())
+		assert.Equal(t, "schema_version", f.Tag.Get("json"), rt.Name())
+	}
+	assert.Equal(t, 1, SchemaVersion)
 }
 
 func TestVersionAdoptionHasNoJoinKey(t *testing.T) {

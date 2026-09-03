@@ -182,6 +182,12 @@ func TestRunRejectsBadInputs(t *testing.T) {
 		"seeds for another chain": func(t *testing.T, c *config) {
 			c.seeds = writeSeeds(t, "other-1", "http://192.0.2.1:26657")
 		},
+		"no seeds flag": func(_ *testing.T, c *config) {
+			c.seeds = ""
+		},
+		"no chain flag": func(_ *testing.T, c *config) {
+			c.chain = ""
+		},
 		"zero workers": func(_ *testing.T, c *config) {
 			c.workers = 0
 		},
@@ -226,7 +232,7 @@ func TestParseFlagsDefaults(t *testing.T) {
 	assert.Equal(t, "x-1", cfg.chain)
 	assert.Equal(t, 3, cfg.workers)
 	assert.Equal(t, "from-env", cfg.salt)
-	assert.Equal(t, defaultSeeds, cfg.seeds)
+	assert.Empty(t, cfg.seeds, "no default seeds: the instance provides them")
 	assert.Equal(t, defaultTimeout, cfg.timeout)
 	assert.Equal(t, defaultMaxRuntime, cfg.maxRuntime)
 	assert.Equal(t, defaultProgress, cfg.progress)

@@ -40,13 +40,11 @@ const (
 	exitFail          = 1
 	exitError         = 2
 	saltEnvVar        = "NODEMAP_SALT"
-	defaultChain      = "cosmoshub-4"
 	defaultWorkers    = 16
 	defaultTimeout    = 5 * time.Second
 	defaultMaxRuntime = 20 * time.Minute
 	defaultProgress   = 30 * time.Second
 	defaultDownWindow = 24 * time.Hour
-	defaultSeeds      = "seeds/cosmoshub.json"
 	maxInputBytes     = 1 << 20
 )
 
@@ -95,8 +93,8 @@ func main() {
 func parseFlags(args []string) config {
 	var cfg config
 	fs := flag.NewFlagSet("nodemap", flag.ExitOnError)
-	fs.StringVar(&cfg.seeds, "seeds", defaultSeeds, "seed file in chain.json shape: chain_id, apis.rpc[].address")
-	fs.StringVar(&cfg.chain, "chain", defaultChain, "chain-id to crawl; peers on other networks are dropped")
+	fs.StringVar(&cfg.seeds, "seeds", "", "seed file in chain.json shape: chain_id, apis.rpc[].address (required)")
+	fs.StringVar(&cfg.chain, "chain", "", "chain-id to crawl; peers on other networks are dropped (required)")
 	fs.StringVar(&cfg.geoCountry, "geo-country", "", "country .mmdb (DB-IP Lite or GeoLite2); empty = unknown")
 	fs.StringVar(&cfg.geoASN, "geo-asn", "", "ASN .mmdb (DB-IP Lite or GeoLite2); empty = unknown")
 	fs.StringVar(&cfg.suppress, "suppress", "", "opt-out list: one salted node-id hash per line; empty = nobody")
@@ -107,14 +105,16 @@ func parseFlags(args []string) config {
 	fs.DurationVar(&cfg.progress, "progress", defaultProgress, "print counters to stderr this often; 0 = silent")
 	fs.DurationVar(&cfg.downWindow, "down-window", defaultDownWindow,
 		"how long a vanished public endpoint stays listed as down before it is forgotten")
-	fs.BoolVar(&cfg.hash, "hash", false, "read a node id from stdin, print its salted hash, exit")
+	fs.BoolVar(&cfg.hash, "hash", false, "read a node id from stdin, print the opt-out list entry for it, exit")
 	_ = fs.Parse(args)
 	cfg.salt = os.Getenv(saltEnvVar)
 	return cfg
 }
 
-// hashMode is the maintainer's helper for adding a verified opt-out: the id
-// arrives on stdin, never on a command line, and only the hash leaves.
+// hashMode produces one opt-out list entry. Deciding that a node may be
+// delisted is the instance's process, whatever it is; this only turns the
+// resulting node id into the entry the crawler understands. The id arrives
+// on stdin, never on a command line, and only the hash leaves.
 func hashMode(in io.Reader, out io.Writer, salt string) error {
 	if salt == "" {
 		return errors.New(saltEnvVar + " is not set")
@@ -131,6 +131,9 @@ func hashMode(in io.Reader, out io.Writer, salt string) error {
 }
 
 func run(ctx context.Context, cfg config, client *rpc.Client, stderr io.Writer) error {
+	if cfg.seeds == "" || cfg.chain == "" {
+		return errors.New("-seeds and -chain are required")
+	}
 	if cfg.workers < 1 || cfg.timeout <= 0 || cfg.maxRuntime <= 0 || cfg.downWindow < 0 {
 		return errors.New("workers must be >= 1, timeouts > 0, down-window >= 0")
 	}

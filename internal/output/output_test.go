@@ -69,6 +69,7 @@ func TestUpdateDirectoryState(t *testing.T) {
 	s1, err := UpdateDirectoryState(dir, at, []string{"a", "b"}, window)
 	require.NoError(t, err)
 	assert.Equal(t, map[string]time.Time{"a": at, "b": at}, s1.Endpoints)
+	assert.Equal(t, model.SchemaVersion, s1.SchemaVersion)
 
 	// An hour later b is gone from the live set but stays as recently seen.
 	s2, err := UpdateDirectoryState(dir, at.Add(time.Hour), []string{"a", "c"}, window)

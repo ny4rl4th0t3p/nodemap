@@ -68,6 +68,7 @@ func AppendHistory(dir string, line *model.HistoryLine) error {
 // label, so losing it costs nothing that matters. It returns the new state.
 func UpdateDirectoryState(dir string, now time.Time, live []string, window time.Duration) (model.DirectoryState, error) {
 	state := readDirectoryState(filepath.Join(dir, DirectoryStateFile))
+	state.SchemaVersion = model.SchemaVersion
 	for _, ep := range live {
 		state.Endpoints[ep] = now
 	}

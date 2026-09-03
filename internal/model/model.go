@@ -9,6 +9,11 @@ package model
 
 import "time"
 
+// SchemaVersion stamps every persisted file. A consumer that pins a crawler
+// release knows which shape it reads, and refuses one it does not know.
+// Bump it when a field changes meaning or a file changes shape.
+const SchemaVersion = 1
+
 // NodeRecord is the individual record of one Tier A node: a node that
 // answered its own public RPC and thereby published itself as a service.
 // Nothing about other nodes is ever attached to it.
@@ -62,8 +67,9 @@ type GraphHealth struct {
 // Aggregates is the bucketed view drawn from every node the crawl saw,
 // including the non-public ones that have no individual record.
 type Aggregates struct {
-	Chain     string    `json:"chain"`
-	CrawledAt time.Time `json:"crawled_at"`
+	SchemaVersion int       `json:"schema_version"`
+	Chain         string    `json:"chain"`
+	CrawledAt     time.Time `json:"crawled_at"`
 	// PublicNodes is the Tier A count; NonPublicNodes is everything else
 	// observed. Tiers B and C are deliberately not split: both are
 	// aggregate-only, and telling them apart would need a P2P dial per peer.
@@ -92,12 +98,14 @@ type Current struct {
 // window before it disappears. It holds endpoint strings and times only,
 // for endpoints that published themselves and are pruned every run.
 type DirectoryState struct {
-	Endpoints map[string]time.Time `json:"endpoints"`
+	SchemaVersion int                  `json:"schema_version"`
+	Endpoints     map[string]time.Time `json:"endpoints"`
 }
 
 // HistoryLine is one appended line of history.jsonl: a timestamp and
 // aggregate counter only. It has no per-node content of any kind.
 type HistoryLine struct {
+	SchemaVersion  int       `json:"schema_version"`
 	At             time.Time `json:"at"`
 	Chain          string    `json:"chain"`
 	PublicNodes    int       `json:"public_nodes"`
