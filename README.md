@@ -25,8 +25,8 @@ aggregate and never listed individually.
 
 ## How it works
 
-1. Seed from a checked-in list of public RPC URLs per chain (`seeds/<chain>.json`, in the chain-registry `chain.json`
-   shape).
+1. Seed from a list of public RPC URLs for the chain, supplied by the instance running the crawl, in the
+   chain-registry `chain.json` shape.
 2. For each address: `GET /status`, then `GET /net_info`. Two requests per address per run, each address once, no
    retries, no other ports, redirects refused, bodies capped at 4 MiB. Addresses that do not answer their own RPC are
    never recorded.
@@ -43,16 +43,20 @@ anywhere.
 
 ## Running it
 
+This repository is the software only. A running map is an instance: its own repository holds the seed files, the
+opt-out list, the geolocation databases, the delisting key and contact, and the workflow that runs the crawl and
+publishes the page. The software names no chain and carries no data.
+
 ```
 go build -o nodemap .
-./nodemap -seeds seeds/cosmoshub.json -chain cosmoshub-4 \
+./nodemap -seeds cosmoshub.json -chain cosmoshub-4 \
   -geo-country dbip-country-lite.mmdb -geo-asn dbip-asn-lite.mmdb -out out
 ```
 
 | Flag                       | Default                | Meaning                                                                                            |
 |----------------------------|------------------------|----------------------------------------------------------------------------------------------------|
-| `-seeds`                   | `seeds/cosmoshub.json` | seed file, chain.json shape (`chain_id`, `apis.rpc[].address`); its `chain_id` must match `-chain` |
-| `-chain`                   | `cosmoshub-4`          | chain-id; nodes and peers on any other network are ignored                                         |
+| `-seeds`                   | required               | seed file, chain.json shape (`chain_id`, `apis.rpc[].address`); its `chain_id` must match `-chain` |
+| `-chain`                   | required               | chain-id; nodes and peers on any other network are ignored                                         |
 | `-geo-country`, `-geo-asn` | unset                  | DB-IP Lite or GeoLite2 `.mmdb`; unset means unknown                                                |
 | `-suppress`                | unset                  | opt-out list, one salted hash per line                                                             |
 | `-out`                     | `out`                  | output directory                                                                                   |
@@ -70,11 +74,16 @@ The salt for the opt-out list comes from the `NODEMAP_SALT` environment variable
 
 ## Output
 
+Three files, all stamped with `schema_version` (currently 1) so a consumer that pins a crawler release knows what it
+reads; the number changes when a field changes meaning or a file changes shape.
+
 - `current.json`: the full snapshot. Country counts, ASN table, version adoption, mesh scalars, endpoint directory.
   Replaced every run.
 - `history.jsonl`: one line per run with timestamp and aggregate counters only. Appended.
 - `directory-state.json`: when each public endpoint last answered, pruned after `-down-window`. Endpoints and times
-  only; it lets the map show a recently vanished endpoint as down.
+  only; it lets a map show a recently vanished endpoint as down.
+
+The field-by-field reference is `internal/model/model.go`; every published key is also listed in its test.
 
 Endpoints are published as scheme, host, port, and path only. An endpoint with a query string, credentials, or any path
 segment of 20 characters or more (the shape of an access token, whatever its alphabet) is left out of the directory; the
@@ -95,11 +104,19 @@ A crawl of Cosmos Hub takes about six minutes at 4 workers and 25 MB of memory.
 
 ## Opting out
 
-Operators of a self-advertised RPC node can have its individual record removed. Removal requires proof of control of the
-node's `node_key` (the P2P identity key, not the consensus key; it cannot sign blocks). The procedure, the signed
-message format, and where to send the encrypted proof are documented in this section once the verification helper ships.
-Opt-out removes the endpoint record; the node still counts in anonymous aggregates. It hides the node from this map, not
-from anyone running their own crawler.
+The crawler enforces opt-outs; it does not decide them. Deciding that a node may be delisted, whether by proof of
+control of its `node_key`, by a DNS record, or by any other process, belongs to the instance running the map, and can
+change without touching the crawler.
+
+What the crawler provides is the list. `-suppress FILE` names a text file with one entry per line, blank lines and
+`#` comments allowed. An entry is the SHA-256, in lower-case hex, of the salt from `NODEMAP_SALT`, a zero byte, and
+the node id in lower-case hex with surrounding whitespace removed. `nodemap -hash` reads a node id on stdin and prints
+exactly that entry, so the id never sits on a command line. The salt keeps the published list from revealing who opted
+out, since node ids are enumerable by crawling; a non-empty list with no salt is refused.
+
+The check happens at reduction: a node whose id hashes to a listed entry gets no individual record. It still counts in
+every aggregate, so opt-out removes the record, not the statistic. It hides the node from the instance's map, not from
+anyone running their own crawler. The record disappears with the next crawl after the entry is added.
 
 ## Geolocation data and attribution
 
