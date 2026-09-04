@@ -9,14 +9,14 @@ be turned into a de-anonymizer, and so that its operator never holds a dataset w
 Only these fields ever reach the disk. The persisted types have no place for anything else, and a test fails the build
 if a field with a forbidden name is added.
 
-| Field                                                        | Level                                                                                   | Notes                                            |
-|--------------------------------------------------------------|-----------------------------------------------------------------------------------------|--------------------------------------------------|
-| Node counts (answering RPC / observed only as a peer)        | aggregate                                                                               | all tiers                                        |
-| Country                                                      | aggregate; per endpoint for self-advertised RPC nodes                                   | ISO 3166-1 alpha-2, approximate (IP geolocation) |
-| ASN / hosting organization                                   | aggregate top-N, at least k=5 nodes per row; per endpoint for self-advertised RPC nodes |                                                  |
-| Client version adoption                                      | aggregate share only, above a population floor                                          | never joinable with country, ASN, or endpoint    |
-| Largest connected component, top-N peer-connection share     | two scalars, above a population floor                                                   | computed in memory; no edge is stored            |
-| Public RPC endpoint, archive/pruned, tx-indexer, catching-up | per endpoint, self-advertised RPC nodes that do not report voting power                 | no version, no moniker on any endpoint           |
+| Field                                                        | Level                                                                                   | Notes                                                                                    |
+|--------------------------------------------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------|
+| Node counts (answering RPC / observed only as a peer)        | aggregate                                                                               | all tiers                                                                                |
+| Country                                                      | aggregate; per endpoint for self-advertised RPC nodes                                   | ISO 3166-1 alpha-2, approximate (IP geolocation)                                         |
+| ASN / hosting organization                                   | aggregate top-N, at least k=5 nodes per row; per endpoint for self-advertised RPC nodes | per row also the share of reported connections landing there, above the population floor |
+| Client version adoption                                      | aggregate share only, above a population floor                                          | never joinable with country, ASN, or endpoint                                            |
+| Largest connected component, top-N peer-connection share     | two scalars, above a population floor                                                   | computed in memory; no edge is stored                                                    |
+| Public RPC endpoint, archive/pruned, tx-indexer, catching-up | per endpoint, self-advertised RPC nodes that do not report voting power                 | no version, no moniker on any endpoint                                                   |
 
 Never published, never persisted: any link between an IP and a validator identity, any peer edge or graph, any node id,
 any moniker, per-node software version, per-node IP history, city, or any record of a node that did not answer its own
@@ -25,8 +25,8 @@ aggregate and never listed individually.
 
 ## How it works
 
-1. Seed from a list of public RPC URLs for the chain, supplied by the instance running the crawl, in the
-   chain-registry `chain.json` shape.
+1. Seed from a list of public RPC URLs for the chain, supplied by the instance running the crawl, in the chain-registry
+   `chain.json` shape.
 2. For each address: `GET /status`, then `GET /net_info`. Two requests per address per run, each address once, no
    retries, no other ports, redirects refused, bodies capped at 4 MiB. Addresses that do not answer their own RPC are
    never recorded.
@@ -43,9 +43,9 @@ anywhere.
 
 ## Running it
 
-This repository is the software only. A running map is an instance: its own repository holds the seed files, the
-opt-out list, the geolocation databases, the delisting key and contact, and the workflow that runs the crawl and
-publishes the page. The software names no chain and carries no data.
+This repository is the software only. A running map is an instance: its own repository holds the seed files, the opt-out
+list, the geolocation databases, the delisting key and contact, and the workflow that runs the crawl and publishes the
+page. The software names no chain and carries no data.
 
 ```
 go build -o nodemap .
@@ -53,18 +53,18 @@ go build -o nodemap .
   -geo-country dbip-country-lite.mmdb -geo-asn dbip-asn-lite.mmdb -out out
 ```
 
-| Flag                       | Default                | Meaning                                                                                            |
-|----------------------------|------------------------|----------------------------------------------------------------------------------------------------|
-| `-seeds`                   | required               | seed file, chain.json shape (`chain_id`, `apis.rpc[].address`); its `chain_id` must match `-chain` |
-| `-chain`                   | required               | chain-id; nodes and peers on any other network are ignored                                         |
-| `-geo-country`, `-geo-asn` | unset                  | DB-IP Lite or GeoLite2 `.mmdb`; unset means unknown                                                |
-| `-suppress`                | unset                  | opt-out list, one salted hash per line                                                             |
-| `-out`                     | `out`                  | output directory                                                                                   |
-| `-workers`                 | 16                     | concurrent dials; use 4 on small machines                                                          |
-| `-timeout`                 | 5s                     | per request                                                                                        |
-| `-max-runtime`             | 20m                    | a run that does not finish in time writes nothing                                                  |
-| `-progress`                | 30s                    | counters to stderr this often; 0 for silence                                                       |
-| `-down-window`             | 24h                    | how long a vanished public endpoint stays listed as down                                           |
+| Flag                       | Default  | Meaning                                                                                            |
+|----------------------------|----------|----------------------------------------------------------------------------------------------------|
+| `-seeds`                   | required | seed file, chain.json shape (`chain_id`, `apis.rpc[].address`); its `chain_id` must match `-chain` |
+| `-chain`                   | required | chain-id; nodes and peers on any other network are ignored                                         |
+| `-geo-country`, `-geo-asn` | unset    | DB-IP Lite or GeoLite2 `.mmdb`; unset means unknown                                                |
+| `-suppress`                | unset    | opt-out list, one salted hash per line                                                             |
+| `-out`                     | `out`    | output directory                                                                                   |
+| `-workers`                 | 16       | concurrent dials; use 4 on small machines                                                          |
+| `-timeout`                 | 5s       | per request                                                                                        |
+| `-max-runtime`             | 20m      | a run that does not finish in time writes nothing                                                  |
+| `-progress`                | 30s      | counters to stderr this often; 0 for silence                                                       |
+| `-down-window`             | 24h      | how long a vanished public endpoint stays listed as down                                           |
 
 Exit codes: 0 completed; 1 nothing publishable (no seed answered, or stopped early) and nothing written; 2 error. Logs
 carry counters only, never an address or id.
@@ -109,8 +109,8 @@ control of its `node_key`, by a DNS record, or by any other process, belongs to 
 change without touching the crawler.
 
 What the crawler provides is the list. `-suppress FILE` names a text file with one entry per line, blank lines and
-`#` comments allowed. An entry is the SHA-256, in lower-case hex, of the salt from `NODEMAP_SALT`, a zero byte, and
-the node id in lower-case hex with surrounding whitespace removed. `nodemap -hash` reads a node id on stdin and prints
+`#` comments allowed. An entry is the SHA-256, in lower-case hex, of the salt from `NODEMAP_SALT`, a zero byte, and the
+node id in lower-case hex with surrounding whitespace removed. `nodemap -hash` reads a node id on stdin and prints
 exactly that entry, so the id never sits on a command line. The salt keeps the published list from revealing who opted
 out, since node ids are enumerable by crawling; a non-empty list with no salt is refused.
 
@@ -120,8 +120,8 @@ anyone running their own crawler. The record disappears with the next crawl afte
 
 ## Geolocation data and attribution
 
-The crawler works with any MaxMind-format database and ships none. The database you point it at
-decides what you owe: the free DB-IP Lite databases are CC BY 4.0 and require attribution to
-[DB-IP](https://db-ip.com) wherever results derived from them are shown or redistributed, which
-means the map page and the published data files, not this tool. The public instance of this
-map uses DB-IP Lite and carries that attribution on the page.
+The crawler works with any MaxMind-format database and ships none. The database you point it at decides what you owe:
+the free DB-IP Lite databases are CC BY 4.0 and require attribution to
+[DB-IP](https://db-ip.com) wherever results derived from them are shown or redistributed, which means the map page and
+the published data files, not this tool. The public instance of this map uses DB-IP Lite and carries that attribution on
+the page.

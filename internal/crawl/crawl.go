@@ -91,10 +91,12 @@ type Progress struct {
 	Countries int
 }
 
-// ASNCount is one ASN's node count and organization name.
+// ASNCount is one ASN's node count, organization name, and how many of the
+// reported peer connections land on nodes hosted there.
 type ASNCount struct {
-	Org   string
-	Nodes int
+	Org      string
+	Nodes    int
+	Mentions int
 }
 
 // Result is everything a run yields. It holds individual records for Tier A
@@ -441,6 +443,14 @@ func (c *crawler) result() *Result {
 	dir := make([]model.NodeRecord, 0, len(c.directory))
 	for _, d := range c.directory {
 		dir = append(dir, d.rec)
+	}
+	// Connection mentions per ASN: a counter over a counter, no node named.
+	for key, n := range c.mesh.mentions {
+		if asn := c.nodes[key].enr.ASN; asn != 0 {
+			a := c.asns[asn]
+			a.Mentions += n
+			c.asns[asn] = a
+		}
 	}
 	r := &Result{
 		Directory:      dir,

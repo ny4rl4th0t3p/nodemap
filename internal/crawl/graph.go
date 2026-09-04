@@ -75,11 +75,14 @@ type GraphStats struct {
 	// TopNShare is the share of all connection mentions that terminate at
 	// the N most-mentioned nodes.
 	TopNShare float64
+	// Mentions is the total number of connection mentions, the denominator
+	// of every share derived from the mesh.
+	Mentions int
 }
 
 // stats reduces the mesh to GraphStats.
 func (m *mesh) stats(topN int) GraphStats {
-	s := GraphStats{Population: len(m.parent), TopN: topN}
+	s := GraphStats{Population: len(m.parent), TopN: topN, Mentions: m.total}
 	if s.Population == 0 {
 		return s
 	}

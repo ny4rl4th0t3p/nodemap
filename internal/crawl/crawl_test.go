@@ -197,10 +197,16 @@ func TestCrawlReducesTopology(t *testing.T) {
 	assert.False(t, r.Directory[1].TxIndex)
 
 	assert.Equal(t, map[string]int{"DE": 3, "US": 2, "FI": 1}, r.Countries)
-	assert.Equal(t, map[uint32]ASNCount{24940: {"Hetzner", 3}, 16509: {"AWS", 2}}, r.ASNs)
+	// Mentions per ASN follow the per-node counts below: Hetzner hosts A, B,
+	// C (6 + 4 + 6), AWS hosts D and E (1 + 1); G's ASN is unknown.
+	assert.Equal(t, map[uint32]ASNCount{
+		24940: {Org: "Hetzner", Nodes: 3, Mentions: 16},
+		16509: {Org: "AWS", Nodes: 2, Mentions: 2},
+	}, r.ASNs)
 	assert.Equal(t, map[string]int{"0.38.22": 5, "0.37.0": 1}, r.Versions)
 
 	assert.Equal(t, 6, r.Graph.Population)
+	assert.Equal(t, 20, r.Graph.Mentions)
 	assert.InDelta(t, 1, r.Graph.LargestComponentFraction, delta)
 	assert.Equal(t, 2, r.Graph.TopN)
 	// Ten responder-to-peer pairs were reported (A:4, B:2, C:3, G:1), so 20

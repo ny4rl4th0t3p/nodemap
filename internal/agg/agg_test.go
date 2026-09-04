@@ -30,14 +30,16 @@ func sample() *crawl.Result {
 		NonPublicNodes: 18,
 		Countries:      map[string]int{"DE": 14, "US": 9, "FI": 4, "SG": 1},
 		ASNs: map[uint32]crawl.ASNCount{
-			24940: {Org: "Hetzner", Nodes: 12},
-			16509: {Org: "AWS", Nodes: 6},
-			14061: {Org: "DigitalOcean", Nodes: 5},
-			20473: {Org: "Vultr", Nodes: 4}, // below k
-			64512: {Org: "", Nodes: 1},      // below k
+			24940: {Org: "Hetzner", Nodes: 12, Mentions: 40},
+			16509: {Org: "AWS", Nodes: 6, Mentions: 20},
+			14061: {Org: "DigitalOcean", Nodes: 5, Mentions: 10},
+			20473: {Org: "Vultr", Nodes: 4, Mentions: 8}, // below k
+			64512: {Org: "", Nodes: 1, Mentions: 2},      // below k
 		},
 		Versions: map[string]int{"0.38.22": 20, "0.38.17": 6, "0.37.6": 4},
-		Graph:    crawl.GraphStats{Population: 30, LargestComponentFraction: 0.9, TopN: 5, TopNShare: 0.55},
+		Graph: crawl.GraphStats{
+			Population: 30, LargestComponentFraction: 0.9, TopN: 5, TopNShare: 0.55, Mentions: 100,
+		},
 	}
 }
 
@@ -54,15 +56,16 @@ func TestBuildAppliesThresholds(t *testing.T) {
 
 	require.Len(t, cur.ASNs, 3, "rows below k are withheld")
 	wantASNs := []model.ASNShare{
-		{ASN: 24940, Org: "Hetzner", Nodes: 12, Share: 12.0 / 30},
-		{ASN: 16509, Org: "AWS", Nodes: 6, Share: 6.0 / 30},
-		{ASN: 14061, Org: "DigitalOcean", Nodes: 5, Share: 5.0 / 30},
+		{ASN: 24940, Org: "Hetzner", Nodes: 12, Share: 12.0 / 30, ConnectionShare: 0.4},
+		{ASN: 16509, Org: "AWS", Nodes: 6, Share: 6.0 / 30, ConnectionShare: 0.2},
+		{ASN: 14061, Org: "DigitalOcean", Nodes: 5, Share: 5.0 / 30, ConnectionShare: 0.1},
 	}
 	for i, w := range wantASNs {
 		assert.Equal(t, w.ASN, cur.ASNs[i].ASN)
 		assert.Equal(t, w.Org, cur.ASNs[i].Org)
 		assert.Equal(t, w.Nodes, cur.ASNs[i].Nodes)
 		assert.InDelta(t, w.Share, cur.ASNs[i].Share, delta)
+		assert.InDelta(t, w.ConnectionShare, cur.ASNs[i].ConnectionShare, delta)
 	}
 
 	require.NotNil(t, cur.Versions)
@@ -106,6 +109,13 @@ func TestBuildWithholdsBelowFloor(t *testing.T) {
 	assert.Nil(t, line.TopNShare)
 	assert.Len(t, cur.Countries, 4, "the floor does not touch ungated data")
 	assert.Len(t, cur.Directory, 2)
+	require.Len(t, cur.ASNs, 3, "ASN rows stay: they are k-gated, not floored")
+	for _, row := range cur.ASNs {
+		assert.Zero(t, row.ConnectionShare, "connection share goes with the graph")
+	}
+	raw, err := json.Marshal(cur)
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), "connection_share")
 }
 
 func TestBuildFloorBoundary(t *testing.T) {

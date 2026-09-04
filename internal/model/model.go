@@ -43,6 +43,10 @@ type ASNShare struct {
 	Org   string  `json:"org,omitempty"`
 	Nodes int     `json:"nodes"`
 	Share float64 `json:"share"`
+	// ConnectionShare is the share of all reported peer connections that
+	// land on nodes hosted in this ASN: where the mesh sits, not only where
+	// the nodes are. Omitted below the population floor, with the graph.
+	ConnectionShare float64 `json:"connection_share,omitempty"`
 }
 
 // VersionAdoption is network-wide client-version adoption. It is a

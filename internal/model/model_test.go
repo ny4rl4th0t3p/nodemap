@@ -51,7 +51,7 @@ var allowedJSONKeys = map[string][]string{
 	"Current": {
 		"schema_version", "chain", "crawled_at", "public_nodes", "non_public_nodes",
 		"countries",
-		"asns", "asn", "org", "nodes", "share",
+		"asns", "asn", "org", "nodes", "share", "connection_share",
 		"versions", "population", "shares",
 		"graph", "largest_component_fraction", "top_n", "top_n_share",
 		"directory", "endpoint", "country", "as_org",

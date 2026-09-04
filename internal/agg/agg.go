@@ -90,20 +90,27 @@ func countries(r *crawl.Result) map[string]int {
 // ordered by node count descending then ASN ascending so the output is
 // deterministic.
 // Share is over every node observed, so rows need not sum to one: nodes
-// with no known ASN are simply absent.
+// with no known ASN are simply absent. ConnectionShare is over all reported
+// connections and is published only when the graph is, since it derives
+// from the same mesh and carries the same thin-chain risk.
 func asns(r *crawl.Result, p Params) []model.ASNShare {
 	total := r.PublicNodes + r.NonPublicNodes
+	withGraph := graph(r, p) != nil && r.Graph.Mentions > 0
 	rows := make([]model.ASNShare, 0, len(r.ASNs))
 	for asn, c := range r.ASNs {
 		if c.Nodes < p.K || total == 0 {
 			continue
 		}
-		rows = append(rows, model.ASNShare{
+		row := model.ASNShare{
 			ASN:   asn,
 			Org:   c.Org,
 			Nodes: c.Nodes,
 			Share: float64(c.Nodes) / float64(total),
-		})
+		}
+		if withGraph {
+			row.ConnectionShare = float64(c.Mentions) / float64(r.Graph.Mentions)
+		}
+		rows = append(rows, row)
 	}
 	sort.Slice(rows, func(i, j int) bool {
 		if rows[i].Nodes != rows[j].Nodes {
