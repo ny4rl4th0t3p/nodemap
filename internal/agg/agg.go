@@ -36,8 +36,13 @@ var DefaultParams = Params{K: 5, MaxASNRows: 10, PopulationFloor: 20}
 // CometBFT release the network could plausibly run.
 const OtherVersion = "other"
 
-// releaseRE matches a bare semantic version, with an optional leading v.
-var releaseRE = regexp.MustCompile(`^v?(\d+)\.(\d+)\.(\d+)$`)
+// releaseRE matches a semantic version with an optional leading v, an
+// optional pre-release (chains name mainnet releases like
+// v1.20.3-safeharbor.2), and optional build metadata, which is dropped. The
+// pre-release is bounded so a hostile string never becomes a bucket name;
+// the per-bucket k rule already keeps a suffix unique to one operator from
+// being published.
+var releaseRE = regexp.MustCompile(`^v?(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z.-]{1,32})?(\+[0-9A-Za-z.-]+)?$`)
 
 // oldestMinor is the oldest 0.x line still seen on live networks
 // (Tendermint 0.34). Anything older, or any placeholder like 0.0.1, is not
@@ -128,15 +133,16 @@ func asns(r *crawl.Result, p Params) []model.ASNShare {
 	return rows
 }
 
-// bucketRelease maps a version string to its canonical "major.minor.patch"
-// when it is a plain release string, and to OtherVersion otherwise. It is
-// the rule for application versions, which share no release history.
+// bucketRelease maps a version string to its canonical
+// "major.minor.patch[-prerelease]" when it is a release string, and to
+// OtherVersion otherwise. It is the rule for application versions, which
+// share no release history.
 func bucketRelease(v string) string {
 	m := releaseRE.FindStringSubmatch(v)
 	if m == nil {
 		return OtherVersion
 	}
-	return m[1] + "." + m[2] + "." + m[3]
+	return m[1] + "." + m[2] + "." + m[3] + m[4]
 }
 
 // bucketVersion is bucketRelease with the CometBFT minimum line: a 0.x
@@ -151,7 +157,7 @@ func bucketVersion(v string) string {
 	if major == 0 && minor < oldestMinor {
 		return OtherVersion
 	}
-	return m[1] + "." + m[2] + "." + m[3]
+	return m[1] + "." + m[2] + "." + m[3] + m[4]
 }
 
 // adoption turns raw version counts into published shares: nil below the

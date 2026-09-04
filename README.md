@@ -91,11 +91,13 @@ The field-by-field reference is `internal/model/model.go`; every published key i
 
 Endpoints are published as scheme, host, port, and path only. An endpoint with a query string, credentials, or any path
 segment of 20 characters or more (the shape of an access token, whatever its alphabet) is left out of the directory; the
-node still counts in every aggregate. Client version strings that are not a CometBFT release (0.34 or later), and
-application version strings that are not a plain `major.minor.patch`, are reported under "other"; so is any version run
+node still counts in every aggregate. Version strings are published as `major.minor.patch`, keeping a semantic-version
+pre-release suffix when there is one (chains name mainnet releases like `v1.20.3-safeharbor.2`) and dropping build
+metadata. Anything else is reported under "other", as is a client version older than CometBFT 0.34 and any version run
 by fewer than k nodes.
 
-A crawl of Cosmos Hub takes about six minutes at 4 workers and 25 MB of memory.
+A crawl of Cosmos Hub takes about a minute and a half at the default 16 workers, six minutes at 4, and about 25 MB of
+memory either way.
 
 ## Known limitations
 

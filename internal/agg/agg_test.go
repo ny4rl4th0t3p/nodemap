@@ -162,9 +162,10 @@ func TestVersionBucketing(t *testing.T) {
 		{"v0.38.22", "0.38.22"},
 		{"0.34.29", "0.34.29"},
 		{"1.0.1", "1.0.1"},
+		{"0.38.22-rc1", "0.38.22-rc1"},
 		{"0.0.1", OtherVersion},
 		{"0.33.9", OtherVersion},
-		{"0.38.22-rc1", OtherVersion},
+		{"0.33.9-rc1", OtherVersion},
 		{"0.38", OtherVersion},
 		{"", OtherVersion},
 		{"garbage", OtherVersion},
@@ -215,7 +216,12 @@ func TestAppVersionFloorIsItsOwnPopulation(t *testing.T) {
 func TestBucketRelease(t *testing.T) {
 	cases := map[string]string{
 		"v25.1.0": "25.1.0", "25.1.0": "25.1.0", "0.1.0": "0.1.0",
-		"25.1.0-rc1": OtherVersion, "v25.1": OtherVersion, "": OtherVersion, "25.1.0+abcdef": OtherVersion,
+		// a pre-release is a release the network runs; build metadata is not
+		"25.1.0-rc1": "25.1.0-rc1", "v1.20.3-safeharbor.2": "1.20.3-safeharbor.2",
+		"25.1.0+abcdef": "25.1.0", "1.2.3-rc1+build.7": "1.2.3-rc1",
+		// not a release string: no patch, empty, empty or malformed suffix, or one too long to be a name
+		"v25.1": OtherVersion, "": OtherVersion, "25.1.0-": OtherVersion, "25.1.0-rc 1": OtherVersion,
+		"25.1.0-rc1 ": OtherVersion, "1.2.3-" + strings.Repeat("a", 33): OtherVersion,
 	}
 	for in, want := range cases {
 		assert.Equal(t, want, bucketRelease(in), in)
