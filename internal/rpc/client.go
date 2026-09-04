@@ -72,6 +72,15 @@ func (c *Client) NetInfo(ctx context.Context, base string) (*NetInfo, error) {
 	return &v, nil
 }
 
+// ABCIInfo fetches and decodes base + "/abci_info".
+func (c *Client) ABCIInfo(ctx context.Context, base string) (*ABCIInfo, error) {
+	var v ABCIInfo
+	if _, err := c.get(ctx, base, "/abci_info", &v); err != nil {
+		return nil, err
+	}
+	return &v, nil
+}
+
 // Status fetches and decodes base + "/status" and reports the connection
 // it used.
 func (c *Client) Status(ctx context.Context, base string) (*Status, Conn, error) {

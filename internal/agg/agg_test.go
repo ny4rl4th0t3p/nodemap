@@ -36,7 +36,9 @@ func sample() *crawl.Result {
 			20473: {Org: "Vultr", Nodes: 4, Mentions: 8}, // below k
 			64512: {Org: "", Nodes: 1, Mentions: 2},      // below k
 		},
-		Versions: map[string]int{"0.38.22": 20, "0.38.17": 6, "0.37.6": 4},
+		Versions: map[string]int{"0.38.22": 20, "0.38.17": 6, "0.37.6": 4}, // 0.37.6 is below k
+		// Responders only: 28 of the 30 reported an app version.
+		AppVersions: map[string]int{"v25.1.0": 20, "25.1.0": 4, "25.0.0": 3, "garbage": 1},
 		Graph: crawl.GraphStats{
 			Population: 30, LargestComponentFraction: 0.9, TopN: 5, TopNShare: 0.55, Mentions: 100,
 		},
@@ -76,6 +78,16 @@ func TestBuildAppliesThresholds(t *testing.T) {
 	}
 	assert.InDelta(t, 1, sum, delta)
 	assert.InDelta(t, 20.0/30, cur.Versions.Shares["0.38.22"], delta)
+	assert.InDelta(t, 6.0/30, cur.Versions.Shares["0.38.17"], delta)
+	assert.InDelta(t, 4.0/30, cur.Versions.Shares[OtherVersion], delta, "a 4-node version is folded into other")
+	assert.NotContains(t, cur.Versions.Shares, "0.37.6")
+
+	require.NotNil(t, cur.AppVersions)
+	assert.Equal(t, 28, cur.AppVersions.Population, "responders with a reported app version")
+	assert.InDelta(t, 24.0/28, cur.AppVersions.Shares["25.1.0"], delta, "v-prefixed strings merge")
+	assert.InDelta(t, 4.0/28, cur.AppVersions.Shares[OtherVersion], delta, "a 3-node version and garbage fold")
+	assert.Len(t, cur.AppVersions.Shares, 2)
+	assert.InDelta(t, 24.0/28, line.AppVersionShares["25.1.0"], delta)
 
 	require.NotNil(t, cur.Graph)
 	assert.Equal(t, 30, cur.Graph.Population)
@@ -103,8 +115,10 @@ func TestBuildWithholdsBelowFloor(t *testing.T) {
 	p.PopulationFloor = 31 // one above the sample's population
 	cur, line := Build(sample(), "test-1", at, p)
 	assert.Nil(t, cur.Versions)
+	assert.Nil(t, cur.AppVersions)
 	assert.Nil(t, cur.Graph)
 	assert.Nil(t, line.VersionShares)
+	assert.Nil(t, line.AppVersionShares)
 	assert.Nil(t, line.LargestComponentFraction)
 	assert.Nil(t, line.TopNShare)
 	assert.Len(t, cur.Countries, 4, "the floor does not touch ungated data")
@@ -171,6 +185,43 @@ func TestVersionBucketing(t *testing.T) {
 	assert.InDelta(t, 6.0/30, cur.Versions.Shares[OtherVersion], delta)
 }
 
+func TestPerBucketKFoldsRareVersions(t *testing.T) {
+	counts := map[string]int{"1.0.0": 5, "1.0.1": 4, "1.0.2": 11}
+	got := adoption(counts, bucketRelease, DefaultParams)
+	require.NotNil(t, got)
+	assert.Equal(t, 20, got.Population)
+	assert.InDelta(t, 5.0/20, got.Shares["1.0.0"], delta, "exactly k stays")
+	assert.InDelta(t, 11.0/20, got.Shares["1.0.2"], delta)
+	assert.InDelta(t, 4.0/20, got.Shares[OtherVersion], delta, "below k folds")
+	assert.NotContains(t, got.Shares, "1.0.1")
+
+	// Nothing but rare versions: everything is "other", and it is published.
+	rare := map[string]int{"1.0.0": 4, "1.0.1": 4, "1.0.2": 4, "1.0.3": 4, "1.0.4": 4}
+	got = adoption(rare, bucketRelease, DefaultParams)
+	require.NotNil(t, got)
+	assert.Equal(t, map[string]float64{OtherVersion: 1}, got.Shares)
+}
+
+func TestAppVersionFloorIsItsOwnPopulation(t *testing.T) {
+	r := sample()
+	r.AppVersions = map[string]int{"25.1.0": 19} // one short of the floor
+	cur, line := Build(r, "test-1", at, DefaultParams)
+	assert.NotNil(t, cur.Versions, "the client panel has its own population of 30")
+	assert.Nil(t, cur.AppVersions)
+	assert.Nil(t, line.AppVersionShares)
+	assert.NotNil(t, line.VersionShares)
+}
+
+func TestBucketRelease(t *testing.T) {
+	cases := map[string]string{
+		"v25.1.0": "25.1.0", "25.1.0": "25.1.0", "0.1.0": "0.1.0",
+		"25.1.0-rc1": OtherVersion, "v25.1": OtherVersion, "": OtherVersion, "25.1.0+abcdef": OtherVersion,
+	}
+	for in, want := range cases {
+		assert.Equal(t, want, bucketRelease(in), in)
+	}
+}
+
 func TestNormalizeEndpoint(t *testing.T) {
 	cases := []struct {
 		name, in, want string
@@ -226,12 +277,13 @@ func TestEmptyResultProducesEmptyNotNull(t *testing.T) {
 	for _, want := range []string{`"countries":{}`, `"asns":[]`, `"directory":[]`} {
 		assert.Contains(t, string(raw), want)
 	}
-	for _, forbid := range []string{`"versions"`, `"graph"`} {
+	for _, forbid := range []string{`"versions"`, `"app_versions"`, `"graph"`} {
 		assert.NotContains(t, string(raw), forbid, "floored panels must be absent, not null")
 	}
 	rawLine, err := json.Marshal(line)
 	require.NoError(t, err)
 	assert.NotContains(t, string(rawLine), `"version_shares"`)
+	assert.NotContains(t, string(rawLine), `"app_version_shares"`)
 	assert.NotContains(t, string(rawLine), `"largest_component_fraction"`)
 	assert.NotContains(t, string(rawLine), `"top_n_share"`)
 	assert.Contains(t, string(rawLine), `"schema_version":1`)

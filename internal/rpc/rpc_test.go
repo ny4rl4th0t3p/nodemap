@@ -96,6 +96,19 @@ func TestStatusValidatorFlag(t *testing.T) {
 	}
 }
 
+func TestDecodeABCIInfoKeepsOnlyTheVersion(t *testing.T) {
+	raw := fixture(t, "abci_info.json")
+	for _, key := range []string{`"data"`, `"app_version"`, `"last_block_height"`, `"last_block_app_hash"`} {
+		require.Contains(t, string(raw), key, "fixture must carry %s or the drop test is vacuous", key)
+	}
+	ai, err := DecodeABCIInfo(bytes.NewReader(raw))
+	require.NoError(t, err)
+	assert.Equal(t, "v25.1.0", ai.Response.Version)
+	assertNoField(t, reflect.TypeOf(ABCIInfo{}), "data", "app_version", "hash", "height")
+	rt := reflect.TypeOf(ai.Response)
+	assert.Equal(t, 1, rt.NumField(), "the response holds the version string and nothing else")
+}
+
 func TestNetInfoTypeDropsDirectionStatsAndPeerID(t *testing.T) {
 	raw := fixture(t, "net_info.json")
 	for _, key := range []string{`"is_outbound"`, `"connection_status"`, `"id"`} {
@@ -183,6 +196,15 @@ func FuzzDecodeNetInfo(f *testing.F) {
 	f.Add([]byte(`{"result":{"peers":[{"node_info":{"other":{}}}]}}`))
 	f.Fuzz(func(_ *testing.T, data []byte) {
 		_, _ = DecodeNetInfo(bytes.NewReader(data))
+	})
+}
+
+func FuzzDecodeABCIInfo(f *testing.F) {
+	f.Add(fixture(f, "abci_info.json"))
+	f.Add([]byte(`{}`))
+	f.Add([]byte(`{"result":{"response":{}}}`))
+	f.Fuzz(func(_ *testing.T, data []byte) {
+		_, _ = DecodeABCIInfo(bytes.NewReader(data))
 	})
 }
 

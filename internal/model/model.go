@@ -113,8 +113,12 @@ type Aggregates struct {
 	Countries map[string]int `json:"countries"`
 	// ASNs is the top-N share table, k-gated.
 	ASNs []ASNShare `json:"asns"`
-	// Versions is nil below the population floor.
+	// Versions is the client (CometBFT) version adoption; nil below the
+	// population floor.
 	Versions *VersionAdoption `json:"versions,omitempty"`
+	// AppVersions is the application version adoption, known for nodes that
+	// answer RPC only; nil below its own population floor.
+	AppVersions *VersionAdoption `json:"app_versions,omitempty"`
 	// Graph is nil below the population floor.
 	Graph *GraphHealth `json:"graph,omitempty"`
 }
@@ -144,8 +148,9 @@ type HistoryLine struct {
 	Chain          string    `json:"chain"`
 	PublicNodes    int       `json:"public_nodes"`
 	NonPublicNodes int       `json:"non_public_nodes"`
-	// VersionShares is nil below the population floor.
-	VersionShares map[string]float64 `json:"version_shares,omitempty"`
+	// VersionShares and AppVersionShares are nil below their population floors.
+	VersionShares    map[string]float64 `json:"version_shares,omitempty"`
+	AppVersionShares map[string]float64 `json:"app_version_shares,omitempty"`
 	// Graph scalars are nil below the population floor.
 	LargestComponentFraction *float64 `json:"largest_component_fraction,omitempty"`
 	TopNShare                *float64 `json:"top_n_share,omitempty"`

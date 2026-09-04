@@ -1,9 +1,9 @@
 // Package agg turns a crawl result into the persisted shapes, applying the
 // publication rules of the security boundary: country counts are ungated,
-// ASN rows are k-anonymity gated, version adoption and the graph scalars are
-// withheld below a population floor, endpoints are normalized so no
-// credential is published, and nothing is ever cross-tabulated because the
-// inputs arrive as separate counters.
+// ASN rows and version buckets are k-anonymity gated, version adoption and
+// the graph scalars are withheld below a population floor, endpoints are
+// normalized so no credential is published, and nothing is ever
+// cross-tabulated because the inputs arrive as separate counters.
 package agg
 
 import (
@@ -55,7 +55,8 @@ func Build(r *crawl.Result, chain string, at time.Time, p Params) (model.Current
 			NonPublicNodes: r.NonPublicNodes,
 			Countries:      countries(r),
 			ASNs:           asns(r, p),
-			Versions:       versions(r, p),
+			Versions:       adoption(r.Versions, bucketVersion, p),
+			AppVersions:    adoption(r.AppVersions, bucketRelease, p),
 			Graph:          graph(r, p),
 		},
 		Directory: directory(r),
@@ -69,6 +70,9 @@ func Build(r *crawl.Result, chain string, at time.Time, p Params) (model.Current
 	}
 	if cur.Versions != nil {
 		line.VersionShares = cur.Versions.Shares
+	}
+	if cur.AppVersions != nil {
+		line.AppVersionShares = cur.AppVersions.Shares
 	}
 	if cur.Graph != nil {
 		lcc, top := cur.Graph.LargestComponentFraction, cur.Graph.TopNShare
@@ -124,9 +128,19 @@ func asns(r *crawl.Result, p Params) []model.ASNShare {
 	return rows
 }
 
-// bucketVersion maps a reported version string to its published bucket:
-// the canonical "major.minor.patch" for a plausible release, OtherVersion
-// for everything else.
+// bucketRelease maps a version string to its canonical "major.minor.patch"
+// when it is a plain release string, and to OtherVersion otherwise. It is
+// the rule for application versions, which share no release history.
+func bucketRelease(v string) string {
+	m := releaseRE.FindStringSubmatch(v)
+	if m == nil {
+		return OtherVersion
+	}
+	return m[1] + "." + m[2] + "." + m[3]
+}
+
+// bucketVersion is bucketRelease with the CometBFT minimum line: a 0.x
+// version older than oldestMinor is not a release the network runs.
 func bucketVersion(v string) string {
 	m := releaseRE.FindStringSubmatch(v)
 	if m == nil {
@@ -140,21 +154,31 @@ func bucketVersion(v string) string {
 	return m[1] + "." + m[2] + "." + m[3]
 }
 
-// versions publishes adoption shares only when the population of nodes
-// with a known version reaches the floor.
-func versions(r *crawl.Result, p Params) *model.VersionAdoption {
+// adoption turns raw version counts into published shares: nil below the
+// population floor, and every named bucket with fewer than K nodes folded
+// into OtherVersion, so a rare build is never named. OtherVersion itself is
+// published at any size, since it names nothing.
+func adoption(counts map[string]int, bucket func(string) string, p Params) *model.VersionAdoption {
 	population := 0
 	buckets := map[string]int{}
-	for v, n := range r.Versions {
+	for v, n := range counts {
 		population += n
-		buckets[bucketVersion(v)] += n
+		buckets[bucket(v)] += n
 	}
 	if population < p.PopulationFloor || population == 0 {
 		return nil
 	}
-	shares := make(map[string]float64, len(buckets))
-	for v, n := range buckets {
-		shares[v] = float64(n) / float64(population)
+	folded := map[string]int{}
+	for b, n := range buckets {
+		if b != OtherVersion && n < p.K {
+			folded[OtherVersion] += n
+		} else {
+			folded[b] += n
+		}
+	}
+	shares := make(map[string]float64, len(folded))
+	for b, n := range folded {
+		shares[b] = float64(n) / float64(population)
 	}
 	return &model.VersionAdoption{Population: population, Shares: shares}
 }

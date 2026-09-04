@@ -66,14 +66,14 @@ var allowedJSONKeys = map[string][]string{
 		"schema_version", "chain", "crawled_at", "public_nodes", "non_public_nodes",
 		"countries",
 		"asns", "asn", "org", "nodes", "share", "connection_share",
-		"versions", "population", "shares",
+		"versions", "app_versions", "population", "shares",
 		"graph", "largest_component_fraction", "top_n", "top_n_share",
 		"directory", "endpoint", "country", "as_org",
 		"earliest_block_height", "tx_index", "catching_up",
 	},
 	"HistoryLine": {
 		"schema_version", "at", "chain", "public_nodes", "non_public_nodes",
-		"version_shares", "largest_component_fraction", "top_n_share",
+		"version_shares", "app_version_shares", "largest_component_fraction", "top_n_share",
 	},
 	"DirectoryState": {"schema_version", "endpoints"},
 }

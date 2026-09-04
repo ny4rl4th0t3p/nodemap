@@ -53,12 +53,18 @@ type peerSpec struct {
 	ip, listen, network, version, rpc string
 }
 
-// node builds a handler answering /status and /net_info for one synthetic
-// node. The status carries a full validator_info block with the given
-// voting power, and every peer carries an id, is_outbound, and
-// connection_status, so that the reduction is shown dropping them, not
-// merely never receiving them.
+// node builds a handler answering /status, /net_info, and /abci_info for one
+// synthetic node. The status carries a full validator_info block with the
+// given voting power, every peer carries an id, is_outbound, and
+// connection_status, and abci_info carries the app name and hashes, so that
+// the reduction is shown dropping them, not merely never receiving them.
 func node(id, votingPower, listen string, earliest int64, txIndex string, peers []peerSpec) http.Handler {
+	return nodeWithApp(id, votingPower, listen, earliest, txIndex, "v25.1.0", peers)
+}
+
+func nodeWithApp(id, votingPower, listen string, earliest int64, txIndex, appVersion string, peers []peerSpec) http.Handler {
+	abci := fmt.Sprintf(`{"jsonrpc":"2.0","id":-1,"result":{"response":{"data":"GaiaApp","version":%q,"app_version":"25",`+
+		`"last_block_height":"100","last_block_app_hash":"AA=="}}}`, appVersion)
 	status := fmt.Sprintf(`{"jsonrpc":"2.0","id":-1,"result":{"node_info":{"id":%q,"listen_addr":%q,`+
 		`"network":%q,"version":"0.38.22","moniker":"m","other":{"tx_index":%q,"rpc_address":"tcp://0.0.0.0:26657"}},`+
 		`"sync_info":{"latest_block_height":"100","earliest_block_height":"%d","catching_up":false},`+
@@ -79,6 +85,8 @@ func node(id, votingPower, listen string, earliest int64, txIndex string, peers 
 			_, _ = w.Write([]byte(status))
 		case "/net_info":
 			_, _ = w.Write([]byte(netInfo))
+		case "/abci_info":
+			_, _ = w.Write([]byte(abci))
 		default:
 			http.NotFound(w, r)
 		}
@@ -204,6 +212,7 @@ func TestCrawlReducesTopology(t *testing.T) {
 		16509: {Org: "AWS", Nodes: 2, Mentions: 2},
 	}, r.ASNs)
 	assert.Equal(t, map[string]int{"0.38.22": 5, "0.37.0": 1}, r.Versions)
+	assert.Equal(t, map[string]int{"v25.1.0": 4}, r.AppVersions, "responders only: A, B, C, G")
 
 	assert.Equal(t, 6, r.Graph.Population)
 	assert.Equal(t, 20, r.Graph.Mentions)
@@ -297,6 +306,26 @@ func TestCrawlRecordsANodeOnceAndPrefersTheSeedURL(t *testing.T) {
 	assert.Equal(t, 2, r.NonPublicNodes)
 	require.Equal(t, []string{"http://192.0.2.2:26657", "http://192.0.2.3:26657", "http://seed.test:26657"}, endpoints(r))
 	assert.Equal(t, "DE", r.Directory[2].Country)
+}
+
+func TestCrawlCountsAppVersionOncePerNode(t *testing.T) {
+	world, geo := topology()
+	// A is reached twice, as a hostname seed and by IP; B reports a
+	// different app version; D (refuses) and E (never dialed) report none.
+	world["seed.test:26657"] = world["192.0.2.1:26657"]
+	world["192.0.2.2:26657"] = nodeWithApp("idB", "0", std, 5000, "off", "v24.0.0", []peerSpec{
+		{"192.0.2.1", std, chain, "0.38.22", open}, {"192.0.2.3", std, chain, "0.38.22", open},
+	})
+	r := run(t, world, geo, func(c *Config) {
+		c.Seeds = []string{"http://seed.test:26657"}
+		c.Resolver = fakeResolver{"seed.test": "192.0.2.1"}
+	})
+	assert.Equal(t, map[string]int{"v25.1.0": 3, "v24.0.0": 1}, r.AppVersions)
+	total := 0
+	for _, n := range r.AppVersions {
+		total += n
+	}
+	assert.Equal(t, r.PublicNodes, total, "every responder counted exactly once, no peer counted")
 }
 
 func TestCrawlCountsButNeverListsASelfDeclaredValidator(t *testing.T) {

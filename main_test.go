@@ -47,6 +47,9 @@ func (w world) RoundTrip(req *http.Request) (*http.Response, error) {
 			`"validator_info":{"address":"AA","voting_power":"0"}}}`, n.id, testChain)
 	case "/net_info":
 		_, _ = fmt.Fprintf(rec, `{"result":{"peers":[%s]}}`, n.peers)
+	case "/abci_info":
+		_, _ = fmt.Fprint(rec, `{"result":{"response":{"data":"GaiaApp","version":"v25.1.0","app_version":"25",`+
+			`"last_block_height":"1","last_block_app_hash":"AA=="}}}`)
 	default:
 		rec.WriteHeader(http.StatusNotFound)
 	}
@@ -117,7 +120,7 @@ func TestRunWritesAllFiles(t *testing.T) {
 	assert.Len(t, cur.Directory, 2)
 	assert.Nil(t, cur.Versions, "thin chain publishes no versions")
 	assert.Nil(t, cur.Graph, "thin chain publishes no graph")
-	for _, forbidden := range []string{"id-", "validator", "voting", "192.0.2.3"} {
+	for _, forbidden := range []string{"id-", "validator", "voting", "192.0.2.3", "GaiaApp", "last_block"} {
 		assert.NotContains(t, string(raw), forbidden)
 	}
 

@@ -117,7 +117,11 @@ type Result struct {
 	Countries      map[string]int
 	ASNs           map[uint32]ASNCount
 	Versions       map[string]int
-	Graph          GraphStats
+	// AppVersions counts the application version reported by /abci_info,
+	// known for responders only, once per node. Raw strings; the
+	// aggregator buckets them.
+	AppVersions map[string]int
+	Graph       GraphStats
 }
 
 // ErrConfig reports an unusable Config.
@@ -133,10 +137,12 @@ type target struct {
 }
 
 // nodeState is what the run remembers about one node under its transient
-// key: whether it answered its own RPC, and its enrichment, looked up once.
+// key: whether it answered its own RPC, its enrichment, looked up once, and
+// whether its application version has been counted.
 type nodeState struct {
-	public bool
-	enr    Enrichment
+	public     bool
+	enr        Enrichment
+	appCounted bool
 }
 
 // dirEntry is a node's directory record and whether its endpoint came from
@@ -160,6 +166,7 @@ type crawler struct {
 	countries     map[string]int
 	asns          map[uint32]ASNCount
 	versions      map[string]int
+	appVersions   map[string]int
 	mesh          *mesh
 	directory     map[string]dirEntry // by node key
 	seedsAnswered int
@@ -182,15 +189,16 @@ func Run(ctx context.Context, cfg Config) (*Result, error) {
 		cfg.Resolver = net.DefaultResolver
 	}
 	c := &crawler{
-		cfg:       cfg,
-		work:      make(chan target, cfg.MaxNodes),
-		dialed:    map[string]bool{},
-		nodes:     map[string]nodeState{},
-		countries: map[string]int{},
-		asns:      map[uint32]ASNCount{},
-		versions:  map[string]int{},
-		mesh:      newMesh(),
-		directory: map[string]dirEntry{},
+		cfg:         cfg,
+		work:        make(chan target, cfg.MaxNodes),
+		dialed:      map[string]bool{},
+		nodes:       map[string]nodeState{},
+		countries:   map[string]int{},
+		asns:        map[uint32]ASNCount{},
+		versions:    map[string]int{},
+		appVersions: map[string]int{},
+		mesh:        newMesh(),
+		directory:   map[string]dirEntry{},
 	}
 	start := time.Now()
 	var workers sync.WaitGroup
@@ -309,10 +317,24 @@ func (c *crawler) probe(ctx context.Context, t target) {
 	}
 	c.mu.Unlock()
 
-	ni, err := c.cfg.Client.NetInfo(ctx, t.url)
-	if err != nil {
-		return
+	if ni, err := c.cfg.Client.NetInfo(ctx, t.url); err == nil {
+		c.followPeers(key, ni)
 	}
+	// The application version exists only for responders: one more request
+	// to a node that already answered, never to a peer.
+	if ai, err := c.cfg.Client.ABCIInfo(ctx, t.url); err == nil {
+		c.countAppVersion(key, ai.Response.Version)
+	}
+	// st, ni, and ai go out of scope here. Peer ids were never decoded; the
+	// remote IPs were consumed as dial targets and counters, and each
+	// responder-to-peer pair was folded into the mesh and forgotten.
+}
+
+// followPeers reduces a responder's peer list: every peer on this chain is
+// counted once, folded into the mesh, and, if it advertises an RPC port,
+// queued to be probed on its own merits. At most maxPeersPerResponse peers
+// are considered.
+func (c *crawler) followPeers(key string, ni *rpc.NetInfo) {
 	peers := ni.Peers
 	if len(peers) > maxPeersPerResponse {
 		peers = peers[:maxPeersPerResponse]
@@ -336,9 +358,22 @@ func (c *crawler) probe(ctx context.Context, t target) {
 			c.enqueue(target{url: u, host: p.RemoteIP})
 		}
 	}
-	// st and ni go out of scope here. Peer ids were never decoded; the
-	// remote IPs were consumed as dial targets and counters, and each
-	// responder-to-peer pair was folded into the mesh and forgotten.
+}
+
+// countAppVersion bumps the application-version counter once per node.
+func (c *crawler) countAppVersion(key, version string) {
+	if version == "" {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	s, known := c.nodes[key]
+	if !known || s.appCounted {
+		return
+	}
+	s.appCounted = true
+	c.nodes[key] = s
+	c.appVersions[version]++
 }
 
 // record stores one directory record per node. The first sighting wins,
@@ -461,6 +496,7 @@ func (c *crawler) result() *Result {
 		Countries:      c.countries,
 		ASNs:           c.asns,
 		Versions:       c.versions,
+		AppVersions:    c.appVersions,
 		Graph:          c.mesh.stats(c.cfg.TopN),
 	}
 	sort.Slice(r.Directory, func(i, j int) bool { return r.Directory[i].Endpoint < r.Directory[j].Endpoint })

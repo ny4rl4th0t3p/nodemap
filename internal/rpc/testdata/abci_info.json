@@ -1,0 +1,13 @@
+{
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+    "response": {
+      "data": "GaiaApp",
+      "version": "v25.1.0",
+      "app_version": "25",
+      "last_block_height": "30000000",
+      "last_block_app_hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    }
+  }
+}

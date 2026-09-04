@@ -118,6 +118,15 @@ func (s *Status) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// ABCIInfo is the decoded result of /abci_info, reduced to the application's
+// own version string. The application name, the consensus-level app version
+// number, and the last block height and hash are not decoded.
+type ABCIInfo struct {
+	Response struct {
+		Version string `json:"version"`
+	} `json:"response"`
+}
+
 type envelope struct {
 	Result json.RawMessage `json:"result"`
 	Error  *rpcError       `json:"error"`
@@ -140,6 +149,15 @@ func DecodeNetInfo(r io.Reader) (*NetInfo, error) {
 // DecodeStatus reads a bounded JSON-RPC response body into a Status.
 func DecodeStatus(r io.Reader) (*Status, error) {
 	var v Status
+	if err := decodeEnvelope(r, &v); err != nil {
+		return nil, err
+	}
+	return &v, nil
+}
+
+// DecodeABCIInfo reads a bounded JSON-RPC response body into an ABCIInfo.
+func DecodeABCIInfo(r io.Reader) (*ABCIInfo, error) {
+	var v ABCIInfo
 	if err := decodeEnvelope(r, &v); err != nil {
 		return nil, err
 	}

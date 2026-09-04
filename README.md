@@ -13,14 +13,14 @@ that would let them be joined back toward a node. Any violation fails the build.
 registry of persisted types in `internal/model`: the tests walk exactly those types, and the output package refuses to
 encode anything that is not one of them, so a new type cannot reach disk without joining the registry the tests cover.
 
-| Field                                                        | Level                                                                                   | Notes                                                                                    |
-|--------------------------------------------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------|
-| Node counts (answering RPC / observed only as a peer)        | aggregate                                                                               | all tiers                                                                                |
-| Country                                                      | aggregate; per endpoint for self-advertised RPC nodes                                   | ISO 3166-1 alpha-2, approximate (IP geolocation)                                         |
-| ASN / hosting organization                                   | aggregate top-N, at least k=5 nodes per row; per endpoint for self-advertised RPC nodes | per row also the share of reported connections landing there, above the population floor |
-| Client version adoption                                      | aggregate share only, above a population floor                                          | never joinable with country, ASN, or endpoint                                            |
-| Largest connected component, top-N peer-connection share     | two scalars, above a population floor                                                   | computed in memory; no edge is stored                                                    |
-| Public RPC endpoint, archive/pruned, tx-indexer, catching-up | per endpoint, self-advertised RPC nodes that do not report voting power                 | no version, no moniker on any endpoint                                                   |
+| Field                                                        | Level                                                                                                                   | Notes                                                                                                          |
+|--------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| Node counts (answering RPC / observed only as a peer)        | aggregate                                                                                                               | all tiers                                                                                                      |
+| Country                                                      | aggregate; per endpoint for self-advertised RPC nodes                                                                   | ISO 3166-1 alpha-2, approximate (IP geolocation)                                                               |
+| ASN / hosting organization                                   | aggregate top-N, at least k=5 nodes per row; per endpoint for self-advertised RPC nodes                                 | per row also the share of reported connections landing there, above the population floor                       |
+| Client (CometBFT) and application version adoption           | aggregate share only, each above its own population floor; a version run by fewer than k=5 nodes is folded into "other" | never joinable with country, ASN, or endpoint; the application version is known for nodes that answer RPC only |
+| Largest connected component, top-N peer-connection share     | two scalars, above a population floor                                                                                   | computed in memory; no edge is stored                                                                          |
+| Public RPC endpoint, archive/pruned, tx-indexer, catching-up | per endpoint, self-advertised RPC nodes that do not report voting power                                                 | no version, no moniker on any endpoint                                                                         |
 
 Never published, never persisted: any link between an IP and a validator identity, any peer edge or graph, any node id,
 any moniker, per-node software version, per-node IP history, city, or any record of a node that did not answer its own
@@ -31,9 +31,9 @@ aggregate and never listed individually.
 
 1. Seed from a list of public RPC URLs for the chain, supplied by the instance running the crawl, in the chain-registry
    `chain.json` shape.
-2. For each address: `GET /status`, then `GET /net_info`. Two requests per address per run, each address once, no
-   retries, no other ports, redirects refused, bodies capped at 4 MiB. Addresses that do not answer their own RPC are
-   never recorded.
+2. For each address: `GET /status`, then `GET /net_info`, then `GET /abci_info` for the application version. Three
+   requests per address that answers, one for one that does not, each address once, no retries, no other ports,
+   redirects refused, bodies capped at 4 MiB. Addresses that do not answer their own RPC are never recorded.
 3. Reduce in process, before anything is written: peers become addresses to probe on their own merits and are otherwise
    dropped; the validator identity is never decoded, only whether the node reports voting power, and that only to keep
    it out of the directory; connection direction and statistics are never decoded; the opt-out list is checked here.
@@ -91,8 +91,9 @@ The field-by-field reference is `internal/model/model.go`; every published key i
 
 Endpoints are published as scheme, host, port, and path only. An endpoint with a query string, credentials, or any path
 segment of 20 characters or more (the shape of an access token, whatever its alphabet) is left out of the directory; the
-node still counts in every aggregate. Version strings that are not a CometBFT release (0.34 or later) are reported under
-"other".
+node still counts in every aggregate. Client version strings that are not a CometBFT release (0.34 or later), and
+application version strings that are not a plain `major.minor.patch`, are reported under "other"; so is any version run
+by fewer than k nodes.
 
 A crawl of Cosmos Hub takes about six minutes at 4 workers and 25 MB of memory.
 

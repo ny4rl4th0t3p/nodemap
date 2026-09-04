@@ -24,6 +24,7 @@ jobs:
         run: |
           go test -run='^$' -fuzz='^FuzzDecodeNetInfo$' -fuzztime=30s ./internal/rpc/
           go test -run='^$' -fuzz='^FuzzDecodeStatus$'  -fuzztime=30s ./internal/rpc/
+          go test -run='^$' -fuzz='^FuzzDecodeABCIInfo$' -fuzztime=30s ./internal/rpc/
 
   lint:
     runs-on: ubuntu-latest
