@@ -28,10 +28,28 @@ const (
 	filePerm = 0o600
 )
 
+// ErrUnregistered is returned when something asks to persist a Document
+// not in model.Persisted. It closes the one seam in the boundary
+// tests: a type that reaches disk must be in the registry the tests walk.
+var ErrUnregistered = errors.New("output: type is not a registered persisted type")
+
+// encode is the only place a document becomes bytes. Everything written
+// by this package goes through it, and it refuses anything outside the
+// registry.
+func encode(d model.Document, indent bool) ([]byte, error) {
+	if !model.Registered(d) {
+		return nil, fmt.Errorf("%w: %T", ErrUnregistered, d)
+	}
+	if indent {
+		return json.MarshalIndent(d, "", "  ")
+	}
+	return json.Marshal(d)
+}
+
 // WriteCurrent replaces dir/current.json with cur, writing to a temporary
 // file first so a crash never leaves a truncated snapshot behind.
 func WriteCurrent(dir string, cur *model.Current) error {
-	data, err := json.MarshalIndent(cur, "", "  ")
+	data, err := encode(cur, true)
 	if err != nil {
 		return fmt.Errorf("output: encode current: %w", err)
 	}
@@ -43,7 +61,7 @@ func AppendHistory(dir string, line *model.HistoryLine) error {
 	if err := os.MkdirAll(dir, dirPerm); err != nil {
 		return fmt.Errorf("output: %w", err)
 	}
-	data, err := json.Marshal(line)
+	data, err := encode(line, false)
 	if err != nil {
 		return fmt.Errorf("output: encode history: %w", err)
 	}
@@ -77,7 +95,7 @@ func UpdateDirectoryState(dir string, now time.Time, live []string, window time.
 			delete(state.Endpoints, ep)
 		}
 	}
-	data, err := json.MarshalIndent(state, "", "  ")
+	data, err := encode(state, true)
 	if err != nil {
 		return model.DirectoryState{}, fmt.Errorf("output: encode directory state: %w", err)
 	}

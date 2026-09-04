@@ -40,9 +40,23 @@ var allowedNodeRecordFields = []string{
 	"EarliestBlockHeight", "TxIndex", "CatchingUp",
 }
 
-// persisted lists every type that reaches disk. Anything new that is written
-// must be added here so the walks cover it.
-var persisted = []any{Current{}, HistoryLine{}, DirectoryState{}}
+// persisted is the registry the walks cover. It is the package's own
+// Persisted list, so the tests and the write funnel agree on the trust root.
+var persisted = func() []any {
+	out := make([]any, 0, len(Persisted))
+	for _, p := range Persisted {
+		out = append(out, p)
+	}
+	return out
+}()
+
+func TestRegisteredKnowsOnlyTheRegistry(t *testing.T) {
+	assert.True(t, Registered(Current{}))
+	assert.True(t, Registered(&Current{}), "pointers to registered types count")
+	assert.True(t, Registered(HistoryLine{}))
+	assert.True(t, Registered(&DirectoryState{}))
+	assert.Len(t, Persisted, 3, "a new persisted type must be registered here and covered by every walk")
+}
 
 // allowedJSONKeys is the complete set of JSON keys that can appear in any
 // persisted file. The README's field policy is written against this list;

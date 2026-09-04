@@ -6,8 +6,12 @@ be turned into a de-anonymizer, and so that its operator never holds a dataset w
 
 ## What it publishes
 
-Only these fields ever reach the disk. The persisted types have no place for anything else, and a test fails the build
-if a field with a forbidden name is added.
+Only these fields ever reach the disk. The persisted types have no place for anything else, and the policy is
+executable: allowlists pin the exact field set and JSON keys of every persisted type, denylists ban identity, peer, and
+topology fields at any depth, individual records are scalars only by structural rule, and aggregate tables carry no key
+that would let them be joined back toward a node. Any violation fails the build. The trust root of that guarantee is the
+registry of persisted types in `internal/model`: the tests walk exactly those types, and the output package refuses to
+encode anything that is not one of them, so a new type cannot reach disk without joining the registry the tests cover.
 
 | Field                                                        | Level                                                                                   | Notes                                                                                    |
 |--------------------------------------------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------|

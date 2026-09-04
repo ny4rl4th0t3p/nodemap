@@ -105,6 +105,13 @@ func TestUpdateDirectoryStateStartsFreshOnCorruptFile(t *testing.T) {
 	assert.Empty(t, s.Endpoints)
 }
 
+func TestEveryRegisteredTypeEncodes(t *testing.T) {
+	for _, d := range model.Persisted {
+		_, err := encode(d, false)
+		assert.NoError(t, err, "%T", d)
+	}
+}
+
 func TestWriteFailsOnUnwritableDir(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "file")
 	require.NoError(t, os.WriteFile(file, []byte("x"), 0o600))

@@ -7,12 +7,42 @@
 // regression, not a feature.
 package model
 
-import "time"
+import (
+	"reflect"
+	"time"
+)
 
 // SchemaVersion stamps every persisted file. A consumer that pins a crawler
 // release knows which shape it reads, and refuses one it does not know.
 // Bump it when a field changes meaning or a file changes shape.
 const SchemaVersion = 1
+
+// Document is the set of types that may reach disk. The marker method is
+// unexported, so only types in this package can be written at all; the
+// output package writes nothing else, and refuses any Document that is not
+// in Persisted. Persisted is the trust root of every guarantee below: the
+// tests walk exactly these types, and a type cannot be written without being
+// one of them.
+type Document interface{ persisted() }
+
+// Persisted is the registry of every type that reaches disk. The marker
+// methods are at the end of this file, after the types.
+var Persisted = []Document{Current{}, HistoryLine{}, DirectoryState{}}
+
+// Registered reports whether d's type, or the type it points to, is in
+// Persisted. The output package checks it before encoding anything.
+func Registered(d Document) bool {
+	t := reflect.TypeOf(d)
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	for _, p := range Persisted {
+		if reflect.TypeOf(p) == t {
+			return true
+		}
+	}
+	return false
+}
 
 // NodeRecord is the individual record of one Tier A node: a node that
 // answered its own public RPC and thereby published itself as a service.
@@ -120,3 +150,8 @@ type HistoryLine struct {
 	LargestComponentFraction *float64 `json:"largest_component_fraction,omitempty"`
 	TopNShare                *float64 `json:"top_n_share,omitempty"`
 }
+
+// The Document markers: exactly the types in Persisted, and nothing else.
+func (Current) persisted()        {}
+func (HistoryLine) persisted()    {}
+func (DirectoryState) persisted() {}
