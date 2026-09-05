@@ -23,14 +23,20 @@ type Params struct {
 	// MaxASNRows caps the ASN table at the largest ASNs. It is a page-size
 	// limit, unrelated to the graph's top-N peer share.
 	MaxASNRows int
-	// PopulationFloor is the minimum population below which version
+	// PopulationFloor is the minimum population below which client version
 	// adoption and graph scalars are withheld entirely: on a thin chain
 	// they would fingerprint individual nodes.
 	PopulationFloor int
+	// AppPopulationFloor is the same floor for application version
+	// adoption, whose population is the responders alone: public endpoints
+	// anyone can ask for their version directly, so the panel reveals
+	// nothing that the endpoints do not, and K is the guard that matters.
+	// The floor is 2K so that a published panel can hold two named buckets.
+	AppPopulationFloor int
 }
 
 // DefaultParams are the boundary document's suggested values.
-var DefaultParams = Params{K: 5, MaxASNRows: 10, PopulationFloor: 20}
+var DefaultParams = Params{K: 5, MaxASNRows: 10, PopulationFloor: 20, AppPopulationFloor: 10}
 
 // OtherVersion is the bucket for every version string that is not a
 // CometBFT release the network could plausibly run.
@@ -60,8 +66,8 @@ func Build(r *crawl.Result, chain string, at time.Time, p Params) (model.Current
 			NonPublicNodes: r.NonPublicNodes,
 			Countries:      countries(r),
 			ASNs:           asns(r, p),
-			Versions:       adoption(r.Versions, bucketVersion, p),
-			AppVersions:    adoption(r.AppVersions, bucketRelease, p),
+			Versions:       adoption(r.Versions, bucketVersion, p.PopulationFloor, p.K),
+			AppVersions:    adoption(r.AppVersions, bucketRelease, p.AppPopulationFloor, p.K),
 			Graph:          graph(r, p),
 		},
 		Directory: directory(r),
@@ -161,22 +167,22 @@ func bucketVersion(v string) string {
 }
 
 // adoption turns raw version counts into published shares: nil below the
-// population floor, and every named bucket with fewer than K nodes folded
-// into OtherVersion, so a rare build is never named. OtherVersion itself is
-// published at any size, since it names nothing.
-func adoption(counts map[string]int, bucket func(string) string, p Params) *model.VersionAdoption {
+// panel's population floor, and every named bucket with fewer than k nodes
+// folded into OtherVersion, so a rare build is never named. OtherVersion
+// itself is published at any size, since it names nothing.
+func adoption(counts map[string]int, bucket func(string) string, floor, k int) *model.VersionAdoption {
 	population := 0
 	buckets := map[string]int{}
 	for v, n := range counts {
 		population += n
 		buckets[bucket(v)] += n
 	}
-	if population < p.PopulationFloor || population == 0 {
+	if population < floor || population == 0 {
 		return nil
 	}
 	folded := map[string]int{}
 	for b, n := range buckets {
-		if b != OtherVersion && n < p.K {
+		if b != OtherVersion && n < k {
 			folded[OtherVersion] += n
 		} else {
 			folded[b] += n

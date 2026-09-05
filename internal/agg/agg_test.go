@@ -112,7 +112,8 @@ func TestBuildAppliesThresholds(t *testing.T) {
 
 func TestBuildWithholdsBelowFloor(t *testing.T) {
 	p := DefaultParams
-	p.PopulationFloor = 31 // one above the sample's population
+	p.PopulationFloor = 31    // one above the sample's population
+	p.AppPopulationFloor = 29 // one above the sample's responders
 	cur, line := Build(sample(), "test-1", at, p)
 	assert.Nil(t, cur.Versions)
 	assert.Nil(t, cur.AppVersions)
@@ -188,7 +189,7 @@ func TestVersionBucketing(t *testing.T) {
 
 func TestPerBucketKFoldsRareVersions(t *testing.T) {
 	counts := map[string]int{"1.0.0": 5, "1.0.1": 4, "1.0.2": 11}
-	got := adoption(counts, bucketRelease, DefaultParams)
+	got := adoption(counts, bucketRelease, DefaultParams.AppPopulationFloor, DefaultParams.K)
 	require.NotNil(t, got)
 	assert.Equal(t, 20, got.Population)
 	assert.InDelta(t, 5.0/20, got.Shares["1.0.0"], delta, "exactly k stays")
@@ -198,19 +199,28 @@ func TestPerBucketKFoldsRareVersions(t *testing.T) {
 
 	// Nothing but rare versions: everything is "other", and it is published.
 	rare := map[string]int{"1.0.0": 4, "1.0.1": 4, "1.0.2": 4, "1.0.3": 4, "1.0.4": 4}
-	got = adoption(rare, bucketRelease, DefaultParams)
+	got = adoption(rare, bucketRelease, DefaultParams.AppPopulationFloor, DefaultParams.K)
 	require.NotNil(t, got)
 	assert.Equal(t, map[string]float64{OtherVersion: 1}, got.Shares)
 }
 
 func TestAppVersionFloorIsItsOwnPopulation(t *testing.T) {
 	r := sample()
-	r.AppVersions = map[string]int{"25.1.0": 19} // one short of the floor
+	r.AppVersions = map[string]int{"25.1.0": 9} // one short of the application floor
 	cur, line := Build(r, "test-1", at, DefaultParams)
 	assert.NotNil(t, cur.Versions, "the client panel has its own population of 30")
 	assert.Nil(t, cur.AppVersions)
 	assert.Nil(t, line.AppVersionShares)
 	assert.NotNil(t, line.VersionShares)
+
+	// The application floor is lower than the client one: 10 responders
+	// publish, where 10 observed nodes would not.
+	r.AppVersions = map[string]int{"25.1.0": 10}
+	r.Versions = map[string]int{"0.38.22": 10}
+	cur, _ = Build(r, "test-1", at, DefaultParams)
+	require.NotNil(t, cur.AppVersions)
+	assert.Equal(t, 10, cur.AppVersions.Population)
+	assert.Nil(t, cur.Versions, "the client panel keeps the floor of 20")
 }
 
 func TestBucketRelease(t *testing.T) {
